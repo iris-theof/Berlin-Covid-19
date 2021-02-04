@@ -1,14 +1,14 @@
 import pandas as pd
+import requests
 import plotly.graph_objs as go
 from  wrangling_scripts.functions import *
 
-# Path to csv file
-file_path = "data/all.csv"
-df_berlin = pd.read_csv(file_path, sep = ';')
-# Data downloaded from
+# Data pulled via API from
 #https://daten.berlin.de/datensaetze/covid-19-berlin-verteilung-den-bezirken-gesamt%C3%BCbersicht
-
-df =pd.read_csv(file_path) 
+url = 'https://www.berlin.de/lageso/gesundheit/infektionsepidemiologie-infektionsschutz/corona/tabelle-bezirke-gesamtuebersicht/index.php/index/all.json?q='
+r = requests.get(url)
+resp = r.json()
+df_berlin = pd.DataFrame(resp['index'], dtype='float')
 
 # Export from the columns of the dataframe then names of the different neighboorhoods
 list_berzik= list(df_berlin.columns) 
@@ -48,13 +48,14 @@ berzik_list = df_berlin_melt.Berzik.unique().tolist()
 df_berlin_berzik = df_berlin_melt.groupby('Berzik')['COVID_Erkrankungen'].sum().reset_index(name='COVID_Erkrankungen_sum')
 
 # Add to df_berlin_melt dataframe a new column which would correspond to the season        
-df_berlin_melt['Saison'] = df_berlin_melt['Monat'].apply (lambda row: label_season(row))   
+#df_berlin_melt['Saison'] = df_berlin_melt[['Monat','Jahr']].apply (lambda month_row, year_row: label_season(month_row, year_row)) 
+df_berlin_melt['Saison'] = df_berlin_melt.apply(lambda x: label_season(x['Monat'], x['Jahr']), axis=1)
 
 # Create a new dataframe which would contain the sum of 'Covid Erkranunkungen' for every season at each Neighboorhood
 df_berlin_berzik_saison = df_berlin_melt.groupby(['Saison','Berzik'])['COVID_Erkrankungen'].sum().reset_index(name='COVID_Erkrankungen_Saison_sum')
 
 df_berlin_berzik_saison.Saison = pd.Categorical(df_berlin_berzik_saison.Saison, 
-                      categories=["Frühling","Sommer","Herbst","Winter"],
+                      categories=['Frühling '+str( )+"'20",'Sommer '+str( )+"'20",'Herbst '+str( )+"'20",'Winter '+str( )+"'20"+'-'+"'21"],
                       ordered=True)
 df_berlin_berzik_saison.sort_values('Saison', inplace=True)
 
@@ -91,7 +92,7 @@ def return_figures():
     
 
 
-    layout_one = dict(title = '<b>COVID-19 Erkrankungen nach Jahreszeit (März 2020 bis Januar 2021)</b>',
+    layout_one = dict(title = '<b>COVID-19 Erkrankungen nach Jahreszeit (März 2020 bis heute)</b>',
                 xaxis = dict(title = '', linewidth = 2, tickfont = dict(
                              size = 20,
                              color = 'black'
